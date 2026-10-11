@@ -18,7 +18,7 @@ def initialize_activity():
     _, _, _, _ = reactor_radial_grid(N_r)
     return np.ones((N_z + 1, N_r + 2))
 
-def run_simulation():
+def run_simulation(dynamic=True):
     z, dz = axial_grid(L, N_z)
     xr, _, _, _ = reactor_radial_grid(N_r)
     n_r = len(xr)
@@ -34,19 +34,22 @@ def run_simulation():
 
     t = 0.0
     C_coke = np.zeros_like(a)          # Coke concentration field
+    
+    if not dynamic:
+        t_final = dt_deact
 
     while t < t_final:
         # --- Step 1: Solve steady-state reactor with current activity ---
-        C, T = solve_reactor(z, dz, a, C_in, T_in, T_wall)
+        C, T = solve_reactor(z, dz, a, C_in, T_in, T_wall, heterogeneous=False)
 
         # --- Step 2: Compute local coke formation rate ---
         r_coke = np.zeros_like(a)
         for j in range(N_z + 1):
             for k in range(n_r):
                 p = {sp: C[sp][j, k] * 8.314 * T[j, k] / 1e5
-                     for sp in C}
-                r_coke[j, k] = coke_formation_rate(T[j, k], p)
-
+                     for sp in C}   # bar
+                r_coke[j, k] = coke_formation_rate(T[j, k], p, a[j, k])
+                
         # --- Step 3: Integrate deactivation ODE over dt_deact ---
         def rhs(tau, state):
             a_flat = state[:a.size].reshape(a.shape)
@@ -78,12 +81,12 @@ def run_simulation():
         history['X_CH4'].append(X_CH4)
         history['C_coke'].append(C_coke.copy())
 
-        print(f"t = {t/3600:6.1f} h | X_CH4 = {X_CH4:.4f} | "
-              f"a_min = {a.min():.4f} | C_coke_max = {C_coke.max():.4f}")
+        print(f"t = {t:6.1f} h | X_CH4 = {X_CH4:.4f} | "
+              f"a_min = {a.min():.4f} | C_coke_ave = {C_coke.mean():.4f}")
 
         t += dt_deact
 
     return history, z, xr
 
 if __name__ == '__main__':
-    history, z, xr = run_simulation()
+    history, z, xr = run_simulation(dynamic=False)
