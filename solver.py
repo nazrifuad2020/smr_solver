@@ -34,11 +34,12 @@ def run_simulation(dynamic=True):
 
     t = 0.0
     C_coke = np.zeros_like(a)          # Coke concentration field
-    
-    if not dynamic:
-        t_final = dt_deact
 
-    while t < t_final:
+    tf = t_final
+    if not dynamic:
+        tf = dt_deact
+
+    while t < tf:
         # --- Step 1: Solve steady-state reactor with current activity ---
         C, T = solve_reactor(z, dz, a, C_in, T_in, T_wall, heterogeneous=False)
 
@@ -89,4 +90,4 @@ def run_simulation(dynamic=True):
     return history, z, xr
 
 if __name__ == '__main__':
-    history, z, xr = run_simulation(dynamic=False)
+    history, z, xr = run_simulation(dynamic=True)

@@ -28,7 +28,7 @@ def plot_profiles(history, z, xr):
     ax[0, 1].legend(); ax[0, 1].grid(True)
 
     # Methane conversion vs time
-    t_h = np.array(history['t']) / 3600.0
+    t_h = np.array(history['t'])
     ax[1, 0].plot(t_h, history['X_CH4'], 'b-o')
     ax[1, 0].set_xlabel('t [h]'); ax[1, 0].set_ylabel('X_CH4')
     ax[1, 0].grid(True)
