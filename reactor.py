@@ -49,11 +49,11 @@ def _initial_guess_hetero(C_in, T_in):
 
 
 def _initial_guess_homo(C_in, T_in):
-    n_unk = len(SPECIES)*(N_r+1) + (N_r+1)
+    n_unk = len(SPECIES)*_N_K + _N_K
     y0 = np.zeros(n_unk)
     for i, sp in enumerate(SPECIES):
-        y0[i*(N_r+1):(i+1)*(N_r+1)] = C_in[sp]
-    y0[-N_r-1:] = T_in
+        y0[i*_N_K:(i+1)*_N_K] = C_in[sp]
+    y0[-_N_K:] = T_in
     return y0
 
 
@@ -73,12 +73,10 @@ def _unpack_hetero(y, j, C_bulk, T_bulk, C_pellet, T_pellet):
             T_pellet[j, k, p] = y[toff + p]
             
             
-def _unpack_homo(y, j, T_wall, C_bulk, T_bulk):
+def _unpack_homo(y, j, C_bulk, T_bulk):
     for i, sp in enumerate(SPECIES):
-        C_bulk[sp][j, :N_r+1] = y[i*(N_r+1):(i+1)*(N_r+1)]
-        C_bulk[sp][j, -1] = C_bulk[sp][j, -2]
-    T_bulk[j, :N_r+1] = y[-N_r-1:]
-    T_bulk[j, -1] = T_wall
+        C_bulk[sp][j, :_N_K] = y[i*_N_K:(i+1)*_N_K]
+    T_bulk[j, :_N_K] = y[-_N_K:]
 
 
 # ============================================================
@@ -222,36 +220,47 @@ def _residual_homo(y, C_prev, T_prev, C_in, T_in, T_wall, dz, a_node):
     Q = 0.0
     Cj = {sp: np.zeros(_N_K) for sp in SPECIES}
     for i, sp in enumerate(SPECIES):
-        Cj[sp][:N_r+1] = y[i*(N_r+1):(i+1)*(N_r+1)]
-        Cj[sp][-1] = Cj[sp][-2]    # wall: zero flux (approx)
+        Cj[sp][:_N_K] = y[i*_N_K:(i+1)*_N_K]
     Tj = np.zeros(_N_K)
-    Tj[:N_r+1] = y[-N_r-1:]
-    Tj[-1] = T_wall                 # wall temperature
+    Tj[:_N_K] = y[-_N_K:]
     
-    n_unk = len(SPECIES)*(N_r+1) + (N_r+1)
+    n_unk = len(SPECIES)*_N_K + _N_K
 
     res = np.zeros(n_unk)
-    for k in range(N_r+1):
+    for k in range(_N_K):
         a_loc = a_node[k]
         p = {sp: Cj[sp][k]*R_SI*Tj[k]/1e5 for sp in SPECIES}
-        rxn = reaction_rates(Tj[k], p, a_loc)
-        S = species_source_terms(rxn)
-        for sp in S:
-            S[sp] *= rho_p * 1000.0 / 3600.0    # mol/(m^3·s)
-        Q = heat_source_term(rxn)
-        Q *= rho_p * 1000.0 / 3600.0 * 1000.0   # W/m^3
-        for i, sp in enumerate(SPECIES):
-            # Radial diffusion
-            rad = (D_er * 4.0/R_t**2) * sum(_Mr[k, m]*Cj[sp][m]
+        
+        if k < _N_K - 1:
+            rxn = reaction_rates(Tj[k], p, a_loc)
+            S = species_source_terms(rxn)
+            for sp in S:
+                S[sp] *= rho_p * 1000.0 / 3600.0    # mol/(m^3·s)
+            Q = heat_source_term(rxn)
+            Q *= rho_p * 1000.0 / 3600.0 * 1000.0   # W/m^3
+            for i, sp in enumerate(SPECIES):
+                # Radial diffusion
+                rad = (D_er * 4.0/R_t**2) * sum(_Mr[k, m]*Cj[sp][m]
+                                                for m in range(_N_K))
+                # Axial convection (backward difference for stability)
+                conv = -u_s * (Cj[sp][k] - C_prev[sp][k]) / dz
+                res[i*_N_K+k] = rad + conv + S[sp]
+            # Energy
+            rad_T = (k_er_f * 4.0/R_t**2) * sum(_Mr[k, m]*Tj[m]
                                             for m in range(_N_K))
-            # Axial convection (backward difference for stability)
-            conv = -u_s * (Cj[sp][k] - C_prev[sp][k]) / dz
-            res[i*(N_r+1)+k] = rad + conv + S[sp]
-        # Energy
-        rad_T = (k_er_f * 4.0/R_t**2) * sum(_Mr[k, m]*Tj[m]
-                                            for m in range(_N_K))
-        conv_T = -u_s * rho_b * 2.5 * (Tj[k] - T_prev[k]) / dz
-        res[-N_r-1+k] = rad_T + conv_T + Q
+            conv_T = -u_s * rho_b * 2.5 * (Tj[k] - T_prev[k]) / dz
+            res[-_N_K+k] = rad_T + conv_T + Q
+            
+        else:
+            # ---------- Wall point (k = N_K - 1) ----------
+            # Mass: zero flux at wall -> dC/dx = 0
+            for i, sp in enumerate(SPECIES):
+                res[i*_N_K+k] = sum(_Ar[_N_K - 1, m] * Cj[sp][m]
+                                    for m in range(_N_K))
+            # Energy: (2 k_er / R_t) dT/dx|_wall = h_w (T_wall - T_b[wall])
+            dTdx = sum(_Ar[_N_K - 1, m] * Tj[m] for m in range(_N_K))
+            res[-1] = ((2.0 * k_er_f / R_t) * dTdx - h_w * (T_wall - Tj[_N_K - 1]))
+        
     return res
 
 _xr, _Ar, _Br, _Mr = reactor_radial_grid(6)   # N_r = 6
@@ -347,6 +356,6 @@ def solve_reactor(
         if heterogeneous:
             _unpack_hetero(sol.x, j, C_bulk, T_bulk, C_pellet, T_pellet)
         else:
-            _unpack_homo(sol.x, j, T_wall, C_bulk, T_bulk)
+            _unpack_homo(sol.x, j, C_bulk, T_bulk)
 
     return C_bulk, T_bulk, C_pellet, T_pellet
