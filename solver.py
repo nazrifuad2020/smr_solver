@@ -18,7 +18,7 @@ def initialize_activity():
     _, _, _, _ = reactor_radial_grid(N_r)
     return np.ones((N_z + 1, N_r + 2))
 
-def run_simulation(dynamic=True):
+def run_simulation(dynamic=True, heterogeneous=True):
     z, dz = axial_grid(L, N_z)
     xr, _, _, _ = reactor_radial_grid(N_r)
     n_r = len(xr)
@@ -41,7 +41,9 @@ def run_simulation(dynamic=True):
 
     while t < tf:
         # --- Step 1: Solve steady-state reactor with current activity ---
-        C, T = solve_reactor(z, dz, a, C_in, T_in, T_wall, heterogeneous=False)
+        C, T, Cp, Tp = solve_reactor(
+            z, dz, a, C_in, T_in, T_wall, heterogeneous=heterogeneous
+        )
 
         # --- Step 2: Compute local coke formation rate ---
         r_coke = np.zeros_like(a)
@@ -90,4 +92,4 @@ def run_simulation(dynamic=True):
     return history, z, xr
 
 if __name__ == '__main__':
-    history, z, xr = run_simulation(dynamic=True)
+    history, z, xr = run_simulation(dynamic=False, heterogeneous=False)
