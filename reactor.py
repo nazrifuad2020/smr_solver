@@ -264,8 +264,6 @@ def _residual_homo(y, C_prev, T_prev, C_in, T_in, T_wall, dz, a_node):
         
     return res
 
-_xr, _Ar, _Br, _Mr = reactor_radial_grid(6)   # N_r = 6
-N_r = len(_xr) - 2
 
 def solve_reactor(
     z, 
