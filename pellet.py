@@ -6,21 +6,10 @@ Created on Fri Oct  9 14:56:58 2026
 """
 
 import numpy as np
-from config import (D_e_CH4, D_e_H2O, D_e_CO, D_e_CO2, D_e_H2,
-                    k_e_s, rho_p, R_p, R_SI)
+from config import SPECIES, NU, D_e, k_e_s, rho_p, R_p, R_SI, DELTA_H as dH
 from kinetics import intrinsic_rates
 from grid import pellet_radial_grid, pellet_quadrature_weights
-from deactivation import coke_formation_rate
 
-SPECIES = ['CH4', 'H2O', 'CO', 'CO2', 'H2']
-D_e = {'CH4': D_e_CH4, 'H2O': D_e_H2O, 'CO': D_e_CO,
-       'CO2': D_e_CO2, 'H2': D_e_H2}
-NU = {
-    'SMR': {'CH4': -1, 'H2O': -1, 'CO': +1, 'CO2': 0, 'H2': +3},
-    'WGS': {'CH4':  0, 'H2O': -1, 'CO': -1, 'CO2': +1, 'H2': +1},
-    'GRR': {'CH4': -1, 'H2O': -2, 'CO':  0, 'CO2': +1, 'H2': +4},
-}
-dH = {'SMR': 206.1, 'WGS': -41.15, 'GRR': 165.0}
 
 _xp, _Ap, _Bp, _Mp = pellet_radial_grid(10)   # N_p = 10
 
@@ -79,6 +68,46 @@ def solve_pellet(C_bulk, T_bulk, a, k_c, h_f, P_total):
         C_surf[sp] = sol.x[i*N + N - 1]     # last interior node
     T_surf = sol.x[-1]
     return C_surf, T_surf
+
+# ============================================================
+# Convenience: effectiveness factor from the full pellet solution
+# ============================================================
+def compute_effectiveness_factors(C_bulk, T_bulk, C_pellet, T_pellet, 
+                                  activity_profile):
+    """
+    Compute the SMR effectiveness factor at every (z, r) location
+    by integrating the intrinsic rate over the pellet volume.
+    """
+    Nz = C_bulk[SPECIES[0]].shape[0] - 1
+    Nk = C_bulk[SPECIES[0]].shape[1]
+    Np = C_pellet[SPECIES[0]].shape[2]
+    
+    N_p = Np - 2
+    _, w_pel = pellet_quadrature_weights(N_p)
+    
+    eta = np.zeros((Nz + 1, Nk))
+
+    for j in range(Nz + 1):
+        for k in range(Nk):
+            a_k = activity_profile[j, k]
+            # Volume-averaged rate
+            r_avg = 0.0
+            for idx, p in enumerate(range(1, Np - 1)):
+                T_loc = T_pellet[j, k, p]
+                p_part = {sp: C_pellet[sp][j, k, p] * R_SI * T_loc / 1e5
+                          for sp in SPECIES}
+                r1, _, _ = intrinsic_rates(T_loc, p_part)
+                r_avg += w_pel[idx] * a_k * r1 * _xp[p]**2
+            r_avg *= 3.0
+
+            # Surface rate
+            T_surf = T_pellet[j, k, Np - 1]
+            p_surf = {sp: C_pellet[sp][j, k, Np - 1] * R_SI * T_surf / 1e5
+                      for sp in SPECIES}
+            r1_s, _, _ = intrinsic_rates(T_surf, p_surf)
+            eta[j, k] = r_avg / (a_k * r1_s + 1e-30)
+
+    return eta
 
 def effectiveness_factor(T, C, a):
     """Compute η for the SMR reaction via quadrature."""

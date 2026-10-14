@@ -13,6 +13,7 @@ from config import (N_r, N_p, N_SPECIES, CP_MOL, D_e, eps_bed, rho_p, D_er,
                     R_SI, SPECIES)
 from config import reaction_rates, species_source_terms, heat_source_term
 from grid import reactor_radial_grid, pellet_radial_grid
+from pellet import compute_effectiveness_factors
 
 
 # ============================================================
@@ -357,5 +358,9 @@ def solve_reactor(
             _unpack_hetero(sol.x, j, C_bulk, T_bulk, C_pellet, T_pellet)
         else:
             _unpack_homo(sol.x, j, C_bulk, T_bulk)
+    
+    eta = compute_effectiveness_factors(
+        C_bulk, T_bulk, C_pellet, T_pellet, activity_profile
+    )
 
-    return C_bulk, T_bulk, C_pellet, T_pellet
+    return C_bulk, T_bulk, C_pellet, T_pellet, eta

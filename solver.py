@@ -8,7 +8,7 @@ Created on Fri Oct  9 14:57:46 2026
 import numpy as np
 from scipy.integrate import solve_ivp
 from config import (L, N_z, N_r, t_final, dt_deact, C_total_in, y_in,
-                    T_in, T_wall, u_s, deact)
+                    T_in, T_wall, u_s)
 from grid import axial_grid, reactor_radial_grid
 from reactor import solve_reactor
 from deactivation import coke_formation_rate, activity_ode
@@ -41,7 +41,7 @@ def run_simulation(dynamic=True, heterogeneous=True):
 
     while t < tf:
         # --- Step 1: Solve steady-state reactor with current activity ---
-        C, T, Cp, Tp = solve_reactor(
+        C, T, Cp, Tp, eta = solve_reactor(
             z, dz, a, C_in, T_in, T_wall, heterogeneous=heterogeneous
         )
 
@@ -92,4 +92,4 @@ def run_simulation(dynamic=True, heterogeneous=True):
     return history, z, xr
 
 if __name__ == '__main__':
-    history, z, xr = run_simulation(dynamic=False, heterogeneous=False)
+    history, z, xr = run_simulation(dynamic=False, heterogeneous=True)
