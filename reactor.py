@@ -11,7 +11,7 @@ from scipy.integrate import solve_ivp
 
 from config import (N_r, N_p, N_SPECIES, CP_MOL, D_e, rho_p, D_er, k_er_f, R_t, 
                     R_p, u_s, rho_b, h_f, h_w, k_c, k_e_s, a_v, R_SI, SPECIES, 
-                    C_total_in, MW)
+                    C_total_in, MW, U_overall)
 from config import reaction_rates, species_source_terms, heat_source_term
 from grid import reactor_radial_grid, pellet_radial_grid
 from pellet import compute_effectiveness_factors
@@ -278,7 +278,7 @@ def _residual_hetero_1d(yraw, C_prev, T_prev, C_in, T_in, T_wall, dz, a_node):
     p_tot = sum(p_part[sp] for sp in SPECIES) # bar
     rho_g = p_tot * mix_MW / R_SI / T_b * 1e5 / 1000    # kg/m^3
     conv_T = u_s * rho_g * cp * 1000 * (T_b - T_prev) / dz
-    htc_b = 250 # 1 / (1 / h_w + R_t / 4 / k_er_f)
+    htc_b = U_overall # 1 / (1 / h_w + R_t / 4 / k_er_f)
     ext_T = 2 * htc_b / R_t * (T_b - T_wall)
     res[_N_SP] = conv_T - inter_T + ext_T
     
@@ -431,7 +431,7 @@ def _residual_homo_1d(yraw, C_prev, T_prev, C_in, T_in, T_wall, dz, a_node):
     rho_g = p_tot * mix_MW / R_SI / T_b * 1e5 / 1000    # kg/m^3
     conv_T = u_s * rho_g * cp * 1000 * (T_b - T_prev) / dz
     source_T = Q
-    htc_b = 250 # 1 / (1 / h_w + R_t / 4 / k_er_f)
+    htc_b = U_overall # 1 / (1 / h_w + R_t / 4 / k_er_f)
     ext_T = 2 * htc_b / R_t * (T_b - T_wall)
     res[_N_SP] = conv_T - source_T + ext_T # + inter_T 
     
@@ -473,7 +473,7 @@ def _ode_homo_1d(t, y, T_wall, a_node):
     cp = sum_C_cp / mix_MW  # kJ/(Kg.K)
     rho_g = p_tot * mix_MW / R_SI / T_b * 1e5 / 1000    # kg/m^3
     source_T = Q
-    Utc = 250 # 1 / (1 / h_w + R_t / 4 / k_er_f)
+    Utc = U_overall # 1 / (1 / h_w + R_t / 4 / k_er_f)
     ext_T = 2 * Utc / R_t * (T_b - T_wall)
     dy[_N_SP] = (source_T - ext_T) / (u_s * cp * rho_g * 1000) # + inter_T 
     

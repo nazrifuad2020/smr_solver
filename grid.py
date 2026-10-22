@@ -10,7 +10,7 @@ from scipy.special import roots_jacobi
 
 def reactor_radial_grid(N):
     """Jacobi P_N^(1,0) on [0,1], cylindrical weight x."""
-    roots, _ = roots_jacobi(N, 1, 0)     # on [-1,1]
+    roots, _ = roots_jacobi(N, 0, 1)     # (N, 1, 0)     # on [-1,1]
     x_int = np.sort((1 + roots) / 2)
     x = np.concatenate(([0.0], x_int, [1.0]))
     A = _lagrange_first_derivative(x)
@@ -20,7 +20,7 @@ def reactor_radial_grid(N):
 
 def pellet_radial_grid(N):
     """Jacobi P_N^(2,0) on [0,1], spherical weight x^2."""
-    roots, _ = roots_jacobi(N, 2, 0)
+    roots, _ = roots_jacobi(N, 0, 2)  # (N, 2, 0)
     x_int = np.sort((1 + roots) / 2)
     x = np.concatenate(([0.0], x_int, [1.0]))
     A = _lagrange_first_derivative(x)
@@ -58,8 +58,8 @@ def axial_grid(L, Nz):
 
 # Quadrature weights for the pellet (weight x^2 on [0,1])
 def pellet_quadrature_weights(N):
-    x, _, _, _ = pellet_radial_grid(N)
     # Use Jacobi-Gauss weights via roots_jacobi
-    _, w = roots_jacobi(N, 2, 0)
-    w = w / 2.0                     # scale from [-1,1] to [0,1]
-    return x[1:-1], w               # interior points and weights
+    roots, w = roots_jacobi(N, 0, 2)  # (N, 2, 0)
+    x_int = np.sort((1 + roots) / 2)
+    w = w / 8.0                     # scale from [-1,1] to [0,1]
+    return x_int, w               # interior points and weights

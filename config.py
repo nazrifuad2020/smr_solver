@@ -60,6 +60,7 @@ D_e = {
 h_f       = 200.0         # Fluid-solid heat transfer [W/(m^2·K)]
 h_w       = 500.0         # Wall heat transfer [W/(m^2·K)]
 k_c       = 0.05          # External mass transfer [m/s]
+U_overall = 279.5         # Overall heat transfer coefficient [W/(m^2·K)]
 
 
 # ============================================================

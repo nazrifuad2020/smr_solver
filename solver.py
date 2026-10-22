@@ -12,6 +12,8 @@ from config import (L, N_z, N_r, t_final, dt_deact, C_total_in, y_in,
 from grid import axial_grid, reactor_radial_grid
 from reactor import solve_reactor_1d, solve_reactor_2d, solve_reactor_1d_ode
 from deactivation import coke_formation_rate, activity_ode
+from pellet import compute_effectiveness_factors
+
 
 def initialize_activity():
     """a(z,r) = 1 everywhere at t=0."""
@@ -105,7 +107,7 @@ def run_simulation_1d(dynamic=True, heterogeneous=True, ode=False):
     a = np.ones(N_z + 1)
 
     # Store history
-    history = {'t': [], 'a': [], 'T': [], 'X_CH4': [], 'C_coke': []}
+    history = {'t': [], 'a': [], 'T': [], 'X_CH4': [], 'C_coke': [], 'eta': []}
 
     t = 0.0
     C_coke = np.zeros_like(a)          # Coke concentration field
@@ -147,6 +149,9 @@ def run_simulation_1d(dynamic=True, heterogeneous=True, ode=False):
                         rtol=1e-6, atol=1e-9)
         a = sol.y[:a.size, -1].reshape(a.shape)
         C_coke = sol.y[a.size:, -1].reshape(a.shape)
+        
+        if heterogeneous:
+            eta = compute_effectiveness_factors(C, T, Cp, Tp, a)
 
         # --- Step 4: Compute methane conversion ---
         F_CH4_in = u_s * np.pi * 0.05**2 * C_in['CH4']
@@ -159,6 +164,8 @@ def run_simulation_1d(dynamic=True, heterogeneous=True, ode=False):
         history['T'].append(T.copy())
         history['X_CH4'].append(X_CH4)
         history['C_coke'].append(C_coke.copy())
+        if heterogeneous:
+            history['eta'].append(eta.copy())
 
         print(f"t = {t:6.1f} h | X_CH4 = {X_CH4:.4f} | "
               f"a_min = {a.min():.4f} | C_coke_ave = {C_coke.mean():.4f}")

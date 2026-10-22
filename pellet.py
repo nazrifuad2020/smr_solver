@@ -79,33 +79,32 @@ def compute_effectiveness_factors(C_bulk, T_bulk, C_pellet, T_pellet,
     by integrating the intrinsic rate over the pellet volume.
     """
     Nz = C_bulk[SPECIES[0]].shape[0] - 1
-    Nk = C_bulk[SPECIES[0]].shape[1]
-    Np = C_pellet[SPECIES[0]].shape[2]
+    # Nk = C_bulk[SPECIES[0]].shape[1]
+    Np = C_pellet[SPECIES[0]].shape[1]
     
     N_p = Np - 2
     _, w_pel = pellet_quadrature_weights(N_p)
     
-    eta = np.zeros((Nz + 1, Nk))
+    eta = np.zeros(Nz + 1)
 
     for j in range(Nz + 1):
-        for k in range(Nk):
-            a_k = activity_profile[j, k]
-            # Volume-averaged rate
-            r_avg = 0.0
-            for idx, p in enumerate(range(1, Np - 1)):
-                T_loc = T_pellet[j, k, p]
-                p_part = {sp: C_pellet[sp][j, k, p] * R_SI * T_loc / 1e5
-                          for sp in SPECIES}
-                r1, _, _ = intrinsic_rates(T_loc, p_part)
-                r_avg += w_pel[idx] * a_k * r1 * _xp[p]**2
-            r_avg *= 3.0
-
-            # Surface rate
-            T_surf = T_pellet[j, k, Np - 1]
-            p_surf = {sp: C_pellet[sp][j, k, Np - 1] * R_SI * T_surf / 1e5
+        a_j = activity_profile[j]
+        # Volume-averaged rate
+        r_avg = 0.0
+        for idx, p in enumerate(range(1, Np - 1)):
+            T_loc = T_pellet[j, p]
+            p_part = {sp: C_pellet[sp][j, p] * R_SI * T_loc / 1e5 
                       for sp in SPECIES}
-            r1_s, _, _ = intrinsic_rates(T_surf, p_surf)
-            eta[j, k] = r_avg / (a_k * r1_s + 1e-30)
+            r1, _, _ = intrinsic_rates(T_loc, p_part)
+            r_avg += w_pel[idx] * a_j * r1 # * _xp[p]**2  
+        r_avg *= 3.0
+
+        # Surface rate
+        T_surf = T_pellet[j, Np - 1]
+        p_surf = {sp: C_pellet[sp][j, Np - 1] * R_SI * T_surf / 1e5
+                  for sp in SPECIES}
+        r1_s, _, _ = intrinsic_rates(T_surf, p_surf)
+        eta[j] = r_avg / (a_j * r1_s + 1e-30)
 
     return eta
 
