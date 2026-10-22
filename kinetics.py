@@ -25,10 +25,10 @@ def intrinsic_rates(T, p):
     k1 = k_arrhenius(K['k_SMR'], K['E_SMR'], T, K['T_ref'])
     k2 = k_arrhenius(K['k_WGS'], K['E_WGS'], T, K['T_ref'])
     k3 = k_arrhenius(K['k_GRR'], K['E_GRR'], T, K['T_ref'])
-    KCH4 = K_vant_hoff(K['K_CH4'], K['dH_CH4'], T, K['T_ref'])
+    KCH4 = K_vant_hoff(K['K_CH4'], K['dH_CH4'], T, 823.0)
     KCO  = K_vant_hoff(K['K_CO'],  K['dH_CO'],  T, K['T_ref'])
     KH2  = K_vant_hoff(K['K_H2'],  K['dH_H2'],  T, K['T_ref'])
-    KH2O = K_vant_hoff(K['K_H2O'], K['dH_H2O'], T, K['T_ref'])
+    KH2O = K_vant_hoff(K['K_H2O'], K['dH_H2O'], T, 823.0)
 
     pH2O, pH2, pCH4 = p['H2O'], p['H2'], p['CH4']
     pCO, pCO2       = p['CO'],  p['CO2']

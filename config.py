@@ -66,8 +66,8 @@ k_c       = 0.05          # External mass transfer [m/s]
 # 5. Operating conditions
 # ============================================================
 u_s       = 1.5           # Superficial velocity [m/s]
-T_in      = 800.0 + 273.15
-T_wall    = 1150.0 + 273.15
+T_in      = 550 + 273.15
+T_wall    = 1000 + 273.15
 P_total   = 25.0e5        # Pa
 
 y_in = {
@@ -214,6 +214,15 @@ CP_MOL = {
     'N2':  32.0,
 }
 
+MW = {
+    'CH4': 16.04,
+    'H2O': 18.02,
+    'CO':  28.01,
+    'CO2': 44.01,
+    'H2':  2.02,
+    'N2':  28.01,
+}
+
 # ============================================================
 # Utility functions
 # ============================================================
@@ -282,7 +291,7 @@ def heat_source_term(rxn):
     """
     Q = 0.0
     for r in REACTIONS:
-        Q -= DELTA_H[r] * rxn[r]     # minus sign: ΔH positive = endothermic
+        Q -= DELTA_H[r] * 1000 * rxn[r]     # minus sign: ΔH positive = endothermic
     return Q
 
 
